@@ -10,6 +10,7 @@
 (ros::roseus "catch_tray")
 
 (setq *tfl* (instance ros::transform-listener :init))
+(setq *tfl-ctray* (instance ros::transform-listener :init))
 
 (setq *torso-co* (send (car (send *hrp2w* :torso)) :copy-worldcoords))
 ;; トルソリンクの一番最初の世界座標系での座標をコピー
@@ -22,17 +23,38 @@
 ;;シミュレーション用(catch_trayの位置にtray_posをおく)
 (defun sim_pos nil
   (catch_tray)
-  (setq *rtray_pos* (send *hrp2w* :rarm :end-coords :copy-worldcoords))
-  
+  (setq *rtray_pos* (send *hrp2w* :rarm :end-coords :copy-worldcoords))  
   (setq *ltray_pos* (send *hrp2w* :larm :end-coords :copy-worldcoords))
   (send *hrp2w* :reset-manip-pose)
   )
-(defun recog_1marker nil
-  (send *tfl* :wait-for-transform
-	"CHEST_LINK0" "/camera_remote/depth_registered/cluster_decomposeroutput00" (ros::time 0) 3)
+
+(defun approach nil
+  (send *tfl-ctray* :wait-for-transform
+	"CHEST_LINK0" "/camera_remote/depth_registered/cluster_decomposer2output00" (ros::time 0) 3)
   (setq *target-co*
 	(send *tfl* :lookup-transform
-	      "CHEST_LINK0" "/camera_remote/depth_registered/cluster_decomposeroutput00" (ros::time 0)))
+	      "CHEST_LINK0" "/camera_remote/depth_registered/cluster_decomposer2output00" (ros::time 0)))
+  (setq *ctray-pos* (send *torso-co* :transform *target-co*))
+  (send *ctray-pos* :locate #f(-600 0 0))
+  (objects (list *hrp2w* *ctray-pos*))
+  ;;(send *vmax* :go-pos-relative-unsafe (send *ctray-pos* :pos :x) (send *ctray-pos* :pos :y) 0 10000)
+  ;;(send *vmax* :wait-interpolation)
+  )
+
+
+;;掴む前のポーズ.
+(defun pre_pose nil
+  (send *hrp2w* :angle-vector #f(0.0 15.0 0.0 40.0 -56.5395 -60.0223 49.4609 -112.253 -68.1949 -32.7942 69.9981 80.0 -45.0344 55.8813 -34.5312 -112.616 64.4653 34.6465 73.182 -80.0))
+  ;;(send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)
+  ;;(send *ri* :wait-interpolation)
+  )
+
+(defun recog_1marker nil
+  (send *tfl* :wait-for-transform
+	"CHEST_LINK0" "/camera_remote/depth_registered/cluster_decomposer1output00" (ros::time 0) 3)
+  (setq *target-co*
+	(send *tfl* :lookup-transform
+	      "CHEST_LINK0" "/camera_remote/depth_registered/cluster_decomposer1output00" (ros::time 0)))
   (setq *ik-target* (send *torso-co* :transform *target-co*))
   ;; トルソから計算し直すことでeus世界の世界座標系に変換
   (setq *rtray_pos* (send *hrp2w* :rarm :end-coords :copy-worldcoords))
@@ -53,27 +75,22 @@
   ;;(objects (list *hrp2w* *rtray_pos* *ltray_pos*))
   )
 
-;;掴む前のポーズ.
-(defun pre_pose nil
-  (send *hrp2w* :angle-vector #f(0.0 15.0 0.0 40.0 -56.5395 -60.0223 49.4609 -112.253 -68.1949 -32.7942 69.9981 80.0 -45.0344 55.8813 -34.5312 -112.616 64.4653 34.6465 73.182 -80.0))
-  ;;(send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)
-  )
 
 ;;経由点のつもりで作ったらちょうどいい位置に移動したので移動させるときこちらを使う
 (defun go-tray-pos nil
   ;;右手の経由
-  (setq *rvia* (send *hrp2w* :rarm :end-coords :copy-worldcoords))
-  (send *rvia* :locate (send *rtray_pos* :pos) :world)
-  (send *rvia* :translate (float-vector -50 0 0))
-  (send *hrp2w* :rarm :inverse-kinematics *rvia* :rotation-axis t :torso t)
+  (setq *rarm-end* (send *hrp2w* :rarm :end-coords :copy-worldcoords))
+  (send *rarm-end* :locate (send *rtray_pos* :pos) :world)
+  (send *rarm-end* :translate (float-vector -50 0 0))
+  (send *hrp2w* :rarm :inverse-kinematics *rarm-end* :rotation-axis t :torso t)
   ;;左手の経由
-  (setq *lvia* (send *hrp2w* :larm :end-coords :copy-worldcoords))
-  (send *lvia* :locate (send *ltray_pos* :pos) :world)
-  (send *lvia* :translate (float-vector -50 0 0))
-  (send *hrp2w* :larm :inverse-kinematics *lvia* :rotation-axis t :torso t)
-  ;;(send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)
+  (setq *larm-end* (send *hrp2w* :larm :end-coords :copy-worldcoords))
+  (send *larm-end* :locate (send *ltray_pos* :pos) :world)
+  (send *larm-end* :translate (float-vector -50 0 0))
+  (send *hrp2w* :larm :inverse-kinematics *larm-end* :rotation-axis t :torso t)
+  ;;(send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)   
+  ;;(send *ri* :wait-interpolation)
   )
-
 
 (defun catch nil
   (send *ri* :start-impedance :larm)
@@ -90,7 +107,8 @@
   (send *hrp2w* :torso :waist-y :joint-angle 0)
   (send *hrp2w* :rarm :inverse-kinematics *rarm-end* :rotation-axis t :torso t)
   (send *hrp2w* :larm :inverse-kinematics *larm-end* :rotation-axis t :torso t)
-  ;;持ち上げた姿勢を決め打ちに変更したい
+  ;;(send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)   
+  ;;(send *ri* :wait-interpolation)
   )
 
 ;;
@@ -98,12 +116,10 @@
 ;;
 
 (defun release nil
-  (hrp2w-stop-grasp :rarm :angle )
-  (hrp2w-stop-grasp :larm :angle )
+  (hrp2w-stop-grasp :rarm)
+  (hrp2w-stop-grasp :larm)
   (send *ri* :stop-impedance :larm)
  )
-
-
 
 ;;持つときのangle-vector
 ;;#f(0.0 30.0 0.0 40.0 -48.0279 -15.1736 18.9004 -66.7682 -22.5412 -0.027868 56.2728 60.0 -44.8755 12.1764 -11.4703 -73.9615 22.1978 2.31731 61.1763 -60.0)
