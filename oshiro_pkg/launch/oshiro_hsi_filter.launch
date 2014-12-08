@@ -1,0 +1,120 @@
+<!-- -*- mode: xml -*- -->
+<launch>
+  <!--
+  $ roslaunch openni_launch openni.launch    ;; start kinect camera
+  $ rosrun rqt_reconfigure rqt_reconfigure   ;; parameter settings
+  $ roslaunch jsk_pcl_ros hsi_color_filter.launch DEFAULT_NAMESPACE:=/camera/depth_registered INPUT:=points
+  ;; subscribe camera/depth_registered/hsi_output
+  ;; subscribe tf and find /target
+
+  ;; 1 -> red, 2 -> blue
+  -->
+  <arg name="INPUT" default="hsi_input"/>
+  <arg name="OUTPUT1" default="hsi_output1"/>
+  <arg name="OUTPUT2" default="hsi_output2"/>
+  <arg name="CENTROID_FRAME" default="target"/>
+  <arg name="DEFAULT_NAMESPACE" default="HSI_color_filter"/>
+  
+  <arg name="h_max1" default="18" />
+  <arg name="h_min1" default="-60" />
+  <arg name="s_max1" default="214" />
+  <arg name="s_min1" default="106" />
+  <arg name="v_max1" default="144" />
+  <arg name="v_min1" default="60" />
+
+  <arg name="h_max2" default="-88" />
+  <arg name="h_min2" default="-101" />
+  <arg name="s_max2" default="145" />
+  <arg name="s_min2" default="75" />
+  <arg name="v_max2" default="131" />
+  <arg name="v_min2" default="45" />
+
+  <arg name="create_manager" default="true" />
+  <arg name="manager1" default="hsi_filter_manager1" />
+  <arg name="manager2" default="hsi_filter_manager2" />
+
+  <group ns="$(arg DEFAULT_NAMESPACE)">
+    <node if="$(arg create_manager)"
+          pkg="nodelet" type="nodelet" name="$(arg manager1)"
+          args="manager" output="screen"/>
+
+    <node pkg="nodelet" type="nodelet" name="hsi_filter1"
+          args="load jsk_pcl/HSIColorFilter $(arg manager1)" output="screen">
+      <remap from="~input" to="$(arg INPUT)" />
+      <remap from="~output" to="$(arg OUTPUT1)" />
+      <rosparam>
+        use_indices: false
+      </rosparam>
+      <param name="h_limit_max" value="$(arg h_max1)" />
+      <param name="h_limit_min" value="$(arg h_min1)" />
+      <param name="s_limit_max" value="$(arg s_max1)" />
+      <param name="s_limit_min" value="$(arg s_min1)" />
+      <param name="v_limit_max" value="$(arg v_max1)" />
+      <param name="v_limit_min" value="$(arg v_min1)" />
+    </node>
+
+    <node pkg="nodelet" type="nodelet" name="euclidean_clustering1"
+          args="load jsk_pcl/EuclideanClustering $(arg manager1)" output="screen">
+      <remap from="~input" to="$(arg OUTPUT1)" />
+      <rosparam>
+        tolerance: 0.02
+        min_size: 100
+      </rosparam>
+    </node>
+
+    <node pkg="nodelet" type="nodelet"
+          name="cluster_decomposer1"
+          args="load jsk_pcl/ClusterPointIndicesDecomposerZAxis $(arg manager1)"
+          output="screen" clear_params="true">
+      <remap from="~input" to="$(arg OUTPUT1)" />
+      <remap from="~target" to="euclidean_clustering1/output" />
+      <rosparam>
+      </rosparam>
+    </node>
+    
+  </group>
+
+  <group ns="$(arg DEFAULT_NAMESPACE)">
+    <node if="$(arg create_manager)"
+          pkg="nodelet" type="nodelet" name="$(arg manager2)"
+          args="manager" output="screen"/>
+
+    <node pkg="nodelet" type="nodelet" name="hsi_filter2"
+          args="load jsk_pcl/HSIColorFilter $(arg manager2)" output="screen">
+      <remap from="~input" to="$(arg INPUT)" />
+      <remap from="~output" to="$(arg OUTPUT2)" />
+      <rosparam>
+        use_indices: false
+      </rosparam>
+      <param name="h_limit_max" value="$(arg h_max2)" />
+      <param name="h_limit_min" value="$(arg h_min2)" />
+      <param name="s_limit_max" value="$(arg s_max2)" />
+      <param name="s_limit_min" value="$(arg s_min2)" />
+      <param name="v_limit_max" value="$(arg v_max2)" />
+      <param name="v_limit_min" value="$(arg v_min2)" />
+    </node>
+
+   <node pkg="nodelet" type="nodelet" name="euclidean_clustering2"
+          args="load jsk_pcl/EuclideanClustering $(arg manager2)" output="screen">
+     <remap from="~input" to="$(arg OUTPUT2)" />
+      <rosparam>
+        tolerance: 0.02
+        min_size: 100
+      </rosparam>
+    </node>
+    
+    <node pkg="nodelet" type="nodelet"
+          name="cluster_decomposer2"
+          args="load jsk_pcl/ClusterPointIndicesDecomposerZAxis $(arg manager2)"
+          output="screen" clear_params="true">
+      <remap from="~input" to="$(arg OUTPUT2)" />
+      <remap from="~target" to="euclidean_clustering2/output" />
+      <rosparam>
+      </rosparam>
+    </node> 
+ 
+  </group>
+
+
+
+</launch>

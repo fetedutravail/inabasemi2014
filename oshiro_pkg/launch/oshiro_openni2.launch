@@ -1,0 +1,15 @@
+<!-- -*- mode: xml -*- -->
+<launch>
+  
+  <include file="$(find jsk_pcl_ros)/launch/openni2_remote.launch">
+  </include>  
+
+  <include file="$(find jsk_pcl_ros)/launch/openni2_local.launch">
+  </include>
+  
+  <include file="$(find oshiro_pkg)/launch/oshiro_hsi_filter.launch">
+    <arg name="DEFAULT_NAMESPACE" value="/camera_remote/depth_registered"/>
+    <arg name="INPUT" value="points"/>
+  </include>
+      
+</launch>
