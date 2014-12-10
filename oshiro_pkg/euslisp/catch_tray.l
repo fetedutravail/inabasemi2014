@@ -77,6 +77,7 @@
 	      )
 	  )
       )
+    (setq cnt (+ cnt 1))
     )
   (setq *r-obj* (format nil "/camera_remote/depth_registered/cluster_decomposer1output~0,2D" *rmax*))
   (setq *l-obj* (format nil "/camera_remote/depth_registered/cluster_decomposer1output~0,2D" *lmax*))
@@ -145,8 +146,6 @@
   ;;(send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)   
   ;;(send *ri* :wait-interpolation)
   )
-(defun down-tray nil
-  (
 
 (defun release nil
   (hrp2w-stop-grasp :rarm)
