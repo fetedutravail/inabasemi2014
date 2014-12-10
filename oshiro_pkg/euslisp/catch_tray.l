@@ -42,12 +42,11 @@
   ;;(send *vmax* :wait-interpolation)
   )
 
-
 ;;掴む前のポーズ.
 (defun pre_pose nil
   (send *hrp2w* :angle-vector #f(0.0 15.0 0.0 40.0 -56.5395 -60.0223 49.4609 -112.253 -68.1949 -32.7942 69.9981 80.0 -45.0344 55.8813 -34.5312 -112.616 64.4653 34.6465 73.182 -80.0))
-  ;;(send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)
-  ;;(send *ri* :wait-interpolation)
+  (send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)
+  (send *ri* :wait-interpolation)
   )
 
 (defun detect-cb (msg)
@@ -58,9 +57,9 @@
   (setq *lmax* 0)
   (setq *lmax-vol* 0)
   (dolist (box *boxes*) 
-    (setq *vol* (* (send box :pose :dimention :x)
-		   (send box :pose :dimention :y)
-		   (send box :pose :dimention :z)))
+    (setq *vol* (* (send box :dimensions :x)
+		   (send box :dimensions :y)
+		   (send box :dimensions :z)))
     (if (< (send box :pose :position :y) 0) 
 	(if (> vol *rmax-vol*)
 	    (progn
@@ -70,7 +69,7 @@
 	  )
       )
     (if (> (send box :pose :position :y) 0)
-	(if (> vol *lmax-vol*)
+	(if (> *vol* *lmax-vol*)
 	    (progn
 	      (setq *lmax* cnt)
 	      (setq *lmax-vol* *vol*)
@@ -81,6 +80,7 @@
     )
   (setq *r-obj* (format nil "/camera_remote/depth_registered/cluster_decomposer1output~0,2D" *rmax*))
   (setq *l-obj* (format nil "/camera_remote/depth_registered/cluster_decomposer1output~0,2D" *lmax*))
+  (print "detected cluster_decomposer1output")
   )
 (ros::subscribe "/camera_remote/depth_registered/cluster_decomposer/boxes" jsk_pcl_ros::BoundingBoxArray #'detect-cb)
 
@@ -117,15 +117,15 @@
   ;;右手の経由
   (setq *rarm-end* (send *hrp2w* :rarm :end-coords :copy-worldcoords))
   (send *rarm-end* :locate (send *rtray_pos* :pos) :world)
-  (send *rarm-end* :translate (float-vector -50 0 0))
+  (send *rarm-end* :translate (float-vector -50 0 50))
   (send *hrp2w* :rarm :inverse-kinematics *rarm-end* :rotation-axis t :torso t)
   ;;左手の経由
   (setq *larm-end* (send *hrp2w* :larm :end-coords :copy-worldcoords))
   (send *larm-end* :locate (send *ltray_pos* :pos) :world)
-  (send *larm-end* :translate (float-vector -50 0 0))
+  (send *larm-end* :translate (float-vector -50 0 50))
   (send *hrp2w* :larm :inverse-kinematics *larm-end* :rotation-axis t :torso t)
-  ;;(send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)   
-  ;;(send *ri* :wait-interpolation)
+  (send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)   
+  (send *ri* :wait-interpolation)
   )
 
 (defun grasp nil
@@ -138,26 +138,18 @@
 (defun up-tray nil
   (setq *rarm-end2* (send *hrp2w* :rarm :end-coords :copy-worldcoords))
   (setq *larm-end2* (send *hrp2w* :larm :end-coords :copy-worldcoords))
-  (send *rarm-end2* :translate (float-vector -200 0 -100))
-  (send *larm-end2* :translate (float-vector -200 0 -100))
+  (send *rarm-end2* :translate (float-vector -250 0 -100))
+  (send *larm-end2* :translate (float-vector -250 0 -100))
   (send *hrp2w* :torso :waist-y :joint-angle 0)
   (send *hrp2w* :rarm :inverse-kinematics *rarm-end2* :rotation-axis t :torso t)
   (send *hrp2w* :larm :inverse-kinematics *larm-end2* :rotation-axis t :torso t)
-  ;;(send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)   
-  ;;(send *ri* :wait-interpolation)
+  (send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)   
+  (send *ri* :wait-interpolation)
   )
 
 (defun release nil
   (hrp2w-stop-grasp :rarm)
   (hrp2w-stop-grasp :larm)
   (send *ri* :stop-impedance :larm)
- )
-;;持つときのangle-vector
-;;#f(0.0 30.0 0.0 40.0 -48.0279 -15.1736 18.9004 -66.7682 -22.5412 -0.027868 56.2728 60.0 -44.8755 12.1764 -11.4703 -73.9615 22.1978 2.31731 61.1763 -60.0)
+  )
 
-;;持ち上げたときのangle-vector
-;;#f(0.0 0.0 0.0 40.0 -23.1573 -58.2268 49.3678 -106.791 -63.9827 -28.3061 52.4675 80.0 -16.0814 54.2009 -39.2989 -106.798 57.3088 25.5472 57.9657 -80.0)
-
-;trayのpos
-;;(setq *tray* (make-cube 300 500 30))
-;;#f(550.0 0.0 600.0)
