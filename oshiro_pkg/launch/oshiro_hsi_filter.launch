@@ -19,15 +19,15 @@
   <arg name="h_min1" default="-60" />
   <arg name="s_max1" default="214" />
   <arg name="s_min1" default="106" />
-  <arg name="v_max1" default="144" />
-  <arg name="v_min1" default="60" />
+  <arg name="i_max1" default="144" />
+  <arg name="i_min1" default="60" />
 
   <arg name="h_max2" default="-88" />
   <arg name="h_min2" default="-101" />
   <arg name="s_max2" default="145" />
   <arg name="s_min2" default="75" />
-  <arg name="v_max2" default="131" />
-  <arg name="v_min2" default="45" />
+  <arg name="i_max2" default="131" />
+  <arg name="i_min2" default="45" />
 
   <arg name="create_manager" default="true" />
   <arg name="manager1" default="hsi_filter_manager1" />
@@ -49,8 +49,8 @@
       <param name="h_limit_min" value="$(arg h_min1)" />
       <param name="s_limit_max" value="$(arg s_max1)" />
       <param name="s_limit_min" value="$(arg s_min1)" />
-      <param name="v_limit_max" value="$(arg v_max1)" />
-      <param name="v_limit_min" value="$(arg v_min1)" />
+      <param name="i_limit_max" value="$(arg i_max1)" />
+      <param name="i_limit_min" value="$(arg i_min1)" />
     </node>
 
     <node pkg="nodelet" type="nodelet" name="euclidean_clustering1"
@@ -90,8 +90,8 @@
       <param name="h_limit_min" value="$(arg h_min2)" />
       <param name="s_limit_max" value="$(arg s_max2)" />
       <param name="s_limit_min" value="$(arg s_min2)" />
-      <param name="v_limit_max" value="$(arg v_max2)" />
-      <param name="v_limit_min" value="$(arg v_min2)" />
+      <param name="i_limit_max" value="$(arg i_max2)" />
+      <param name="i_limit_min" value="$(arg i_min2)" />
     </node>
 
    <node pkg="nodelet" type="nodelet" name="euclidean_clustering2"
