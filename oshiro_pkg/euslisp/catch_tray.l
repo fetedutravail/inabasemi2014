@@ -9,11 +9,8 @@
 (ros::roseus-add-msgs "jsk_pcl_ros")
 (ros::roseus "catch_tray")
 
-(setq *r-tfl* (instance ros::transform-listener :init))
-(setq *l-tfl* (instance ros::transform-listener :init))
-(setq *tfl-ctray* (instance ros::transform-listener :init))
-
 (setq *torso-co* (send (car (send *hrp2w* :torso)) :copy-worldcoords))
+
 ;; トルソリンクの一番最初の世界座標系での座標をコピー
 
 ;;当て決めで手を動かす.
@@ -29,17 +26,39 @@
   (send *hrp2w* :reset-manip-pose)
   )
 
+(defun my-reset nil
+  (send *hrp2w* :reset-manip-pose)
+  (send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)   
+  (send *ri* :wait-interpolation)
+  )
+
+;;台車がtrayに近づく関数
 (defun approach nil
-  (send *tfl-ctray* :wait-for-transform
-	"CHEST_LINK0" "/camera_remote/depth_registered/cluster_decomposer2output00" (ros::time 0) 3)
-  (setq *target-co*
-	(send *tfl* :lookup-transform
-	      "CHEST_LINK0" "/camera_remote/depth_registered/cluster_decomposer2output00" (ros::time 0)))
-  (setq *ctray-pos* (send *torso-co* :transform *target-co*))
-  (send *ctray-pos* :locate #f(-600 0 0))
-  (objects (list *hrp2w* *ctray-pos*))
-  ;;(send *vmax* :go-pos-relative-unsafe (send *ctray-pos* :pos :x) (send *ctray-pos* :pos :y) 0 10000)
-  ;;(send *vmax* :wait-interpolation)
+  (setq *boxes* nil)
+  (ros::spin-once)
+  (setq *r2-tfl* (instance ros::transform-listener :init))
+  (setq *l2-tfl* (instance ros::transform-listener :init))
+  
+  (when *boxes
+    (send *r2-tfl* :wait-for-transform
+	  "CHEST_LINK0" *r-obj* (ros::time 0) 3)
+    (setq *r2-target-co*
+	  (send *tfl* :lookup-transform
+		"CHEST_LINK0" *r-obj* (ros::time 0)))
+    (send *l2-tfl* :wait-for-transform
+	  "CHEST_LINK0" *l-obj* (ros::time 0) 3)
+    (setq *l2-target-co*
+	  (send *tfl* :lookup-transform
+		"CHEST_LINK0" *l-obj* (ros::time 0)))
+    (setq *r2-tray-pos* (send *torso-co* :transform *target-co*))
+    (setq *l2-tray-pos* (send *torso-co* :transform *target-co*))
+    (setq *ctray-pos* (midpoint 0.5 (send *r2-tray-pos* :pos) (send *l2-tray-pos* :pos)))
+    (send *ctray-pos* (v+ *ctray-pos* (-700 0 0)))
+    (objects (list *hrp2w* *ctray-pos*))
+    ;;(send *vmax* :go-pos-relative-unsafe (send *ctray-pos* :pos :x) (send *ctray-pos* :pos :y) 0 10000)
+    ;;(send *vmax* :wait-interpolation)
+    )
+  (objects (list *hrp2w* *r2-tray-pos* *l2-tray-pos*))
   )
 
 ;;掴む前のポーズ.
@@ -50,6 +69,7 @@
   )
 
 (defun detect-cb (msg)
+  (print "start callback function")
   (setq *boxes* (send msg :boxes))
   (setq cnt 0)
   (setq *rmax* 0)
@@ -60,15 +80,15 @@
     (setq *vol* (* (send box :dimensions :x)
 		   (send box :dimensions :y)
 		   (send box :dimensions :z)))
-    (if (< (send box :pose :position :y) 0) 
-	(if (> vol *rmax-vol*)
+    (if (> (send box :pose :position :x) 0) 
+	(if (> *vol* *rmax-vol*)
 	    (progn
 	      (setq *rmax* cnt)
 	      (setq *rmax-vol* *vol*)
 	      )
 	  )
       )
-    (if (> (send box :pose :position :y) 0)
+    (if (< (send box :pose :position :x) 0)
 	(if (> *vol* *lmax-vol*)
 	    (progn
 	      (setq *lmax* cnt)
@@ -80,13 +100,17 @@
     )
   (setq *r-obj* (format nil "/camera_remote/depth_registered/cluster_decomposer1output~0,2D" *rmax*))
   (setq *l-obj* (format nil "/camera_remote/depth_registered/cluster_decomposer1output~0,2D" *lmax*))
-  (print "detected cluster_decomposer1output")
+  (print "finished callback function"
   )
-(ros::subscribe "/camera_remote/depth_registered/cluster_decomposer/boxes" jsk_pcl_ros::BoundingBoxArray #'detect-cb)
+(ros::subscribe "/camera_remote/depth_registered/cluster_decomposer1/boxes" jsk_pcl_ros::BoundingBoxArray #'detect-cb)
 
 (defun recog nil
   (setq *boxes* nil)
   (ros::spin-once)
+  
+  (setq *r-tfl* (instance ros::transform-listener :init))
+  (setq *l-tfl* (instance ros::transform-listener :init))
+  
   (when *boxes*
     (send *r-tfl* :wait-for-transform
 	  "CHEST_LINK0" *r-obj* (ros::time 0) 3)
@@ -107,10 +131,10 @@
     (send *rtray_pos* :locate (send *r-target* :pos) :world)
     (send *ltray_pos* :locate (send *r-target* :pos) :world)
     ;; コピーした右手座標の位置だけを認識したものにすげ替える
-    (objects (list *hrp2w* *rtray_pos* *ltray_pos*))
+    (print "finish recognition")
     )
+  (objects (list *hrp2w* *rtray_pos* *ltray_pos*))
   )
-
 
 ;;経由点のつもりで作ったらちょうどいい位置に移動したので移動させるときこちらを使う
 (defun go-tray-pos nil
