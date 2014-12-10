@@ -9,12 +9,12 @@
 
   ;; 1 -> red, 2 -> blue
   -->
-  <arg name="INPUT" default="hsi_input"/>
+  <arg name="INPUT" default="points"/>
   <arg name="OUTPUT1" default="hsi_output1"/>
   <arg name="OUTPUT2" default="hsi_output2"/>
   <arg name="CENTROID_FRAME" default="target"/>
-  <arg name="DEFAULT_NAMESPACE" default="HSI_color_filter"/>
-  
+  <arg name="DEFAULT_NAMESPACE" default="/camera_remote/depth_registered"/>
+
   <arg name="h_max1" default="18" />
   <arg name="h_min1" default="-60" />
   <arg name="s_max1" default="214" />
@@ -71,7 +71,7 @@
       <rosparam>
       </rosparam>
     </node>
-    
+
   </group>
 
   <group ns="$(arg DEFAULT_NAMESPACE)">
@@ -102,7 +102,7 @@
         min_size: 100
       </rosparam>
     </node>
-    
+
     <node pkg="nodelet" type="nodelet"
           name="cluster_decomposer2"
           args="load jsk_pcl/ClusterPointIndicesDecomposerZAxis $(arg manager2)"
@@ -111,8 +111,8 @@
       <remap from="~target" to="euclidean_clustering2/output" />
       <rosparam>
       </rosparam>
-    </node> 
- 
+    </node>
+
   </group>
 
 
