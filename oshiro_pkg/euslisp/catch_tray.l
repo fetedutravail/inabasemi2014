@@ -9,7 +9,8 @@
 (ros::roseus-add-msgs "jsk_pcl_ros")
 (ros::roseus "catch_tray")
 
-(setq *tfl* (instance ros::transform-listener :init))
+(setq *r-tfl* (instance ros::transform-listener :init))
+(setq *l-tfl* (instance ros::transform-listener :init))
 (setq *tfl-ctray* (instance ros::transform-listener :init))
 
 (setq *torso-co* (send (car (send *hrp2w* :torso)) :copy-worldcoords))
@@ -49,30 +50,64 @@
   ;;(send *ri* :wait-interpolation)
   )
 
-(defun recog_1marker nil
-  (send *tfl* :wait-for-transform
-	"CHEST_LINK0" "/camera_remote/depth_registered/cluster_decomposer1output00" (ros::time 0) 3)
-  (setq *target-co*
-	(send *tfl* :lookup-transform
-	      "CHEST_LINK0" "/camera_remote/depth_registered/cluster_decomposer1output00" (ros::time 0)))
-  (setq *ik-target* (send *torso-co* :transform *target-co*))
-  ;; トルソから計算し直すことでeus世界の世界座標系に変換
-  (setq *rtray_pos* (send *hrp2w* :rarm :end-coords :copy-worldcoords))
-  ;; 右手の先の角度を動かしたくないので，一度今の角度を保持するため座標ごとコピー
-  (send *rtray_pos* :locate (send *ik-target* :pos) :world)
-  ;; コピーした右手座標の位置だけを認識したものにすげ替える
-  
-  (setq *ltray_pos* (send *hrp2w* :larm :end-coords :copy-worldcoords))
-  ;;左手の先の角度を動かしたくないので，一度今の角度を保持するため座標ごとコピー
+(defun detect-cb (msg)
+  (setq *boxes* (send msg :boxes))
+  (setq cnt 0)
+  (setq *rmax* 0)
+  (setq *rmax-vol* 0)
+  (setq *lmax* 0)
+  (setq *lmax-vol* 0)
+  (dolist (box *boxes*) 
+    (setq *vol* (* (send box :pose :dimention :x)
+		   (send box :pose :dimention :y)
+		   (send box :pose :dimention :z)))
+    (if (< (send box :pose :position :y) 0) 
+	(if (> vol *rmax-vol*)
+	    (progn
+	      (setq *rmax* cnt)
+	      (setq *rmax-vol* *vol*)
+	      )
+	  )
+      )
+    (if (> (send box :pose :position :y) 0)
+	(if (> vol *lmax-vol*)
+	    (progn
+	      (setq *lmax* cnt)
+	      (setq *lmax-vol* *vol*)
+	      )
+	  )
+      )
+    )
+  (setq *r-obj* (format nil "/camera_remote/depth_registered/cluster_decomposer1output~0,2D" *rmax*))
+  (setq *l-obj* (format nil "/camera_remote/depth_registered/cluster_decomposer1output~0,2D" *lmax*))
+  )
+(ros::subscribe "/camera_remote/depth_registered/cluster_decomposer/boxes" jsk_pcl_ros::BoundingBoxArray #'detect-cb)
 
-  (setq *ltray_pos2* (instance coordinates :init))
-  (send *ltray_pos2* :locate (send *rtray_pos* :pos) :world)
-  ;;""右手""の位置をコピ-
-  (send *ltray_pos2* :locate #f(0 420 0))
-  ;;trayの幅から逆算して平行移動
-  (send *ltray_pos* :locate (send *ltray_pos2* :pos) :world)
-
-  ;;(objects (list *hrp2w* *rtray_pos* *ltray_pos*))
+(defun recog nil
+  (setq *boxes* nil)
+  (ros::spin-once)
+  (when *boxes*
+    (send *r-tfl* :wait-for-transform
+	  "CHEST_LINK0" *r-obj* (ros::time 0) 3)
+    (setq *r-target-co*
+	  (send *r-tfl* :lookup-transform
+		"CHEST_LINK0" *r-obj* (ros::time 0)))
+    (send *l-tfl* :wait-for-transform
+	  "CHEST_LINK0" *l-obj* (ros::time 0) 3)
+    (setq *l-target-co*
+	  (send *l-tfl* :lookup-transform
+		"CHEST_LINK0" *l-obj* (ros::time 0)))    
+    (setq *r-target* (send *torso-co* :transform *r-target-co*))
+    (setq *l-target* (send *torso-co* :transform *l-target-co*))
+    ;; トルソから計算し直すことでeus世界の世界座標系に変換
+    (setq *rtray_pos* (send *hrp2w* :rarm :end-coords :copy-worldcoords))
+    (setq *ltray_pos* (send *hrp2w* :larm :end-coords :copy-worldcoords))
+    ;; 両手の手先の角度を動かしたくないので，一度今の角度を保持するため座標ごとコピー
+    (send *rtray_pos* :locate (send *r-target* :pos) :world)
+    (send *ltray_pos* :locate (send *r-target* :pos) :world)
+    ;; コピーした右手座標の位置だけを認識したものにすげ替える
+    (objects (list *hrp2w* *rtray_pos* *ltray_pos*))
+    )
   )
 
 
@@ -92,35 +127,32 @@
   ;;(send *ri* :wait-interpolation)
   )
 
-(defun catch nil
+(defun grasp nil
   (send *ri* :start-impedance :larm)
   (hrp2w-start-grasp :rarm -8)
   (hrp2w-start-grasp :larm 8)
   )
 
 ;;掴んだ後トレイを持ち上げる.
-(defun up_tray nil
-  (setq *rarm-end* (send *hrp2w* :rarm :end-coords :copy-worldcoords))
-  (setq *larm-end* (send *hrp2w* :larm :end-coords :copy-worldcoords))
-  (send *rarm-end* :translate (float-vector -200 0 -100))
-  (send *larm-end* :translate (float-vector -200 0 -100))
+(defun up-tray nil
+  (setq *rarm-end2* (send *hrp2w* :rarm :end-coords :copy-worldcoords))
+  (setq *larm-end2* (send *hrp2w* :larm :end-coords :copy-worldcoords))
+  (send *rarm-end2* :translate (float-vector -200 0 -100))
+  (send *larm-end2* :translate (float-vector -200 0 -100))
   (send *hrp2w* :torso :waist-y :joint-angle 0)
-  (send *hrp2w* :rarm :inverse-kinematics *rarm-end* :rotation-axis t :torso t)
-  (send *hrp2w* :larm :inverse-kinematics *larm-end* :rotation-axis t :torso t)
+  (send *hrp2w* :rarm :inverse-kinematics *rarm-end2* :rotation-axis t :torso t)
+  (send *hrp2w* :larm :inverse-kinematics *larm-end2* :rotation-axis t :torso t)
   ;;(send *ri* :angle-vector (send *hrp2w* :angle-vector) 5000)   
   ;;(send *ri* :wait-interpolation)
   )
-
-;;
-;;持ち上げたトレイを下げる関数の実装が必要.
-;;
+(defun down-tray nil
+  (
 
 (defun release nil
   (hrp2w-stop-grasp :rarm)
   (hrp2w-stop-grasp :larm)
   (send *ri* :stop-impedance :larm)
  )
-
 ;;持つときのangle-vector
 ;;#f(0.0 30.0 0.0 40.0 -48.0279 -15.1736 18.9004 -66.7682 -22.5412 -0.027868 56.2728 60.0 -44.8755 12.1764 -11.4703 -73.9615 22.1978 2.31731 61.1763 -60.0)
 
