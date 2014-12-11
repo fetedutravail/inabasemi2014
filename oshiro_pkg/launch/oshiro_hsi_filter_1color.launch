@@ -6,6 +6,8 @@
   $ roslaunch jsk_pcl_ros hsi_color_filter.launch DEFAULT_NAMESPACE:=/camera/depth_registered INPUT:=points
   ;; subscribe camera/depth_registered/hsi_output
   ;; subscribe tf and find /target
+
+  ;;changed default
   -->
   <arg name="INPUT" default="points"/>
   <arg name="OUTPUT" default="hsi_output"/>
