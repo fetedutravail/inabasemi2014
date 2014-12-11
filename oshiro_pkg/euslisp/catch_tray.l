@@ -39,7 +39,7 @@
   (setq *r2-tfl* (instance ros::transform-listener :init))
   (setq *l2-tfl* (instance ros::transform-listener :init))
   
-  (when *boxes
+  (when *boxes*
     (send *r2-tfl* :wait-for-transform
 	  "CHEST_LINK0" *r-obj* (ros::time 0) 3)
     (setq *r2-target-co*
@@ -54,12 +54,11 @@
     (setq *l2-tray-pos* (send *torso-co* :transform *target-co*))
     (setq *ctray-pos* (instance coordinates :init))
     (send *ctray-pos* :locate (midpoint 0.5 (send *r2-tray-pos* :pos) (send *l2-tray-pos* :pos)))
-    (send *ctray-pos* :locate  #f(-700 0 0)))
-    (objects (list *hrp2w* *ctray-pos*))
-    ;;(send *vmax* :go-pos-relative-unsafe (send *ctray-pos* :pos :x) (send *ctray-pos* :pos :y) 0 10000)
-    ;;(send *vmax* :wait-interpolation)
+    (send *ctray-pos* :locate  #f(-700 0 0))
     )
-  (objects (list *hrp2w* *r2-tray-pos* *l2-tray-pos*))
+  (objects (list *hrp2w* *ctray-pos*))
+  ;;(send *vmax* :go-pos-relative-unsafe (send *ctray-pos* :pos :x) (send *ctray-pos* :pos :y) 0 10000)
+    ;;(send *vmax* :wait-interpolation)
   )
 
 ;;掴む前のポーズ.
@@ -101,9 +100,9 @@
     )
   (setq *r-obj* (format nil "/camera_remote/depth_registered/cluster_decomposer1output~0,2D" *rmax*))
   (setq *l-obj* (format nil "/camera_remote/depth_registered/cluster_decomposer1output~0,2D" *lmax*))
-  (print "finished callback function"
+  (print "finished callback function")
   )
-(ros::subscribe "/camera_remote/depth_registered/cluster_decomposer1/boxes" jsk_pcl_ros::BoundingBoxArray #'detect-cb)
+  (ros::subscribe "/camera_remote/depth_registered/cluster_decomposer1/boxes" jsk_pcl_ros::BoundingBoxArray #'detect-cb)
 
 (defun recog nil
   (setq *boxes* nil)
