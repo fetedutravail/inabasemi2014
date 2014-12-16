@@ -16,7 +16,7 @@
   <arg name="DEFAULT_NAMESPACE" default="/camera_remote/depth_registered"/>
 
   <arg name="h_max1" default="18" />
-  <arg name="h_min1" default="-60" />
+  <arg name="h_min1" default="-50" />
   <arg name="s_max1" default="214" />
   <arg name="s_min1" default="106" />
   <arg name="i_max1" default="144" />
