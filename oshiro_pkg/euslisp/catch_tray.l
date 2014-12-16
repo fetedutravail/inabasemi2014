@@ -152,7 +152,7 @@
   (send *ri* :wait-interpolation)
   )
 
-(defun grasp nil
+(defun my_grasp nil
   (send *ri* :start-impedance :larm)
   (hrp2w-start-grasp :rarm -8)
   (hrp2w-start-grasp :larm 8)
@@ -177,3 +177,14 @@
   (send *ri* :stop-impedance :larm)
   )
 
+
+(defun all_motion nil
+  my-reset
+  pre_pose
+  recog
+  go-tray-pos
+  my_grasp
+  up-tray
+  release
+  my-reset
+)
