@@ -55,10 +55,10 @@
     (setq *ctray-pos* (instance coordinates :init))
     (send *ctray-pos* :locate (midpoint 0.5 (send *r2-tray-pos* :pos) (send *l2-tray-pos* :pos)))
     (send *ctray-pos* :locate  #f(-700 0 0))
+    ;;(send *vmax* :go-pos-relative-unsafe (send *ctray-pos* :pos :x) (send *ctray-pos* :pos :y) 0 10000)
+    ;;(send *vmax* :wait-interpolation)
     )
   (objects (list *hrp2w* *ctray-pos*))
-  ;;(send *vmax* :go-pos-relative-unsafe (send *ctray-pos* :pos :x) (send *ctray-pos* :pos :y) 0 10000)
-    ;;(send *vmax* :wait-interpolation)
   )
 
 ;;掴む前のポーズ.
@@ -98,11 +98,11 @@
       )
     (setq cnt (+ cnt 1))
     )
-  (setq *r-obj* (format nil "/camera_remote/depth_registered/cluster_decomposer1output~0,2D" *rmax*))
-  (setq *l-obj* (format nil "/camera_remote/depth_registered/cluster_decomposer1output~0,2D" *lmax*))
+  (setq *r-obj* (format nil "/camera_remote/depth_registered/cluster_decomposeroutput~0,2D" *rmax*))
+  (setq *l-obj* (format nil "/camera_remote/depth_registered/cluster_decomposeroutput~0,2D" *lmax*))
   (print "finished callback function")
   )
-  (ros::subscribe "/camera_remote/depth_registered/cluster_decomposer1/boxes" jsk_pcl_ros::BoundingBoxArray #'detect-cb)
+(ros::subscribe "/camera_remote/depth_registered/cluster_decomposer/boxes" jsk_pcl_ros::BoundingBoxArray #'detect-cb)
 
 (defun recog nil
   (setq *boxes* nil)
